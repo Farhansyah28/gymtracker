@@ -12,6 +12,18 @@ if (session_status() === PHP_SESSION_NONE) {
     ]);
 }
 
+// Deteksi Kunci Cloudflare Turnstile (Lokal vs Production)
+if (in_array($_SERVER['SERVER_NAME'], ['localhost', '127.0.0.1'])) {
+    // Testing/Mock Keys (Selalu berhasil untuk testing di localhost)
+    $turnstile_sitekey = "1x00000000000000000000AA";
+    $turnstile_secret = "1x000000000000000000000000000000AA";
+} else {
+    // Kunci Produksi Asli untuk gymtracker.boang.my.id
+    // Silakan ganti nilai di bawah ini dengan Site Key & Secret Key asli dari dashboard Cloudflare Anda!
+    $turnstile_sitekey = "0x4AAAAAADXkLKsUWV4FQQ0_";
+    $turnstile_secret = "0x4AAAAAADXkLPn63V_WoQdbjrghc4ZUfg0";
+}
+
 // Redirect ke dashboard jika sudah login
 if (isset($_SESSION['user_id'])) {
     header("Location: index.php");
@@ -45,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Simpan data sesi
                     $_SESSION['user_id'] = $user['id'];
                     $_SESSION['username'] = $user['username'];
-                    
+
                     header("Location: index.php");
                     exit;
                 } else {
@@ -56,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     }
-    
+
     // 2. PROSES REGISTRASI + BIODATA DENGAN CLOUDFLARE TURNSTILE
     elseif (isset($_POST['action']) && $_POST['action'] === 'register') {
         $active_tab = 'register';
@@ -72,30 +84,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (empty($turnstile_response)) {
             $errors[] = "Silakan lengkapi verifikasi Cloudflare Turnstile.";
         } else {
-            // Menggunakan Mock Secret Key Cloudflare untuk testing localhost (selalu berhasil)
-            // Ganti ke Secret Key produksi Anda jika sudah di-deploy ke domain aktif
-            $turnstile_secret = "1x000000000000000000000000000000AA";
-            
+            // Menggunakan $turnstile_secret dari pendeteksi lingkungan di atas
+
             $verify_url = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
             $post_data = http_build_query([
                 'secret' => $turnstile_secret,
                 'response' => $turnstile_response,
                 'remoteip' => $_SERVER['REMOTE_ADDR'] ?? ''
             ]);
-            
+
             $opts = [
                 'http' => [
-                    'method'  => 'POST',
-                    'header'  => "Content-type: application-x-www-form-urlencoded\r\n",
+                    'method' => 'POST',
+                    'header' => "Content-type: application-x-www-form-urlencoded\r\n",
                     'content' => $post_data,
                     'timeout' => 5
                 ]
             ];
-            
-            $context  = stream_context_create($opts);
+
+            $context = stream_context_create($opts);
             $response_json = @file_get_contents($verify_url, false, $context);
             $response = json_decode($response_json, true);
-            
+
             if (!$response || !isset($response['success']) || !$response['success']) {
                 $errors[] = "Verifikasi keamanan Cloudflare Turnstile gagal! Silakan coba lagi.";
             }
@@ -134,7 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     // Hash password menggunakan secure BCRYPT
                     $hashed_password = password_hash($password, PASSWORD_BCRYPT);
-                    
+
                     // Lakukan insert user baru berserta biodatanya
                     $stmt = $pdo->prepare("INSERT INTO users (username, password, height, weight, age, gender) VALUES (?, ?, ?, ?, ?, ?)");
                     $stmt->execute([$username, $hashed_password, $height, $weight, $age, $gender]);
@@ -154,11 +164,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Gym Tracker - Masuk / Daftar</title>
-    
+
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#111217">
     <meta name="mobile-web-app-capable" content="yes">
@@ -175,10 +186,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
-    
+
     <!-- Cloudflare Turnstile API Script -->
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-    
+
     <style>
         :root {
             --bg-color: #111217;
@@ -249,7 +260,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .custom-tabs {
             border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
         }
-        
+
         .custom-tabs .nav-link {
             background: none !important;
             border: none !important;
@@ -343,10 +354,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     </style>
 </head>
+
 <body>
 
     <div class="mobile-frame">
-        
+
         <!-- Brand Header -->
         <div class="brand-header">
             <h1 class="brand-logo">
@@ -356,10 +368,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
 
         <div class="glass-card">
-            
+
             <!-- Success / Error Alert Messages -->
             <?php if (!empty($errors)): ?>
-                <div class="alert alert-danger border-0 py-2 small mb-3" style="background-color: rgba(220, 53, 69, 0.15); color: #ea868f;">
+                <div class="alert alert-danger border-0 py-2 small mb-3"
+                    style="background-color: rgba(220, 53, 69, 0.15); color: #ea868f;">
                     <ul class="mb-0 ps-3">
                         <?php foreach ($errors as $err): ?>
                             <li><?= htmlspecialchars($err) ?></li>
@@ -369,7 +382,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php endif; ?>
 
             <?php if (!empty($success)): ?>
-                <div class="alert alert-success border-0 py-2 small mb-3" style="background-color: rgba(25, 135, 84, 0.15); color: #75b798;">
+                <div class="alert alert-success border-0 py-2 small mb-3"
+                    style="background-color: rgba(25, 135, 84, 0.15); color: #75b798;">
                     <i class="bi bi-check-circle me-1"></i><?= htmlspecialchars($success) ?>
                 </div>
             <?php endif; ?>
@@ -377,29 +391,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <!-- Navigation Tabs -->
             <ul class="nav nav-tabs custom-tabs mb-4 text-center justify-content-center" role="tablist">
                 <li class="nav-item w-50" role="presentation">
-                    <button class="nav-link w-100 <?= $active_tab === 'login' ? 'active' : '' ?>" id="login-tab" data-bs-toggle="tab" data-bs-target="#login-pane" type="button" role="tab">Masuk</button>
+                    <button class="nav-link w-100 <?= $active_tab === 'login' ? 'active' : '' ?>" id="login-tab"
+                        data-bs-toggle="tab" data-bs-target="#login-pane" type="button" role="tab">Masuk</button>
                 </li>
                 <li class="nav-item w-50" role="presentation">
-                    <button class="nav-link w-100 <?= $active_tab === 'register' ? 'active' : '' ?>" id="register-tab" data-bs-toggle="tab" data-bs-target="#register-pane" type="button" role="tab">Daftar Akun</button>
+                    <button class="nav-link w-100 <?= $active_tab === 'register' ? 'active' : '' ?>" id="register-tab"
+                        data-bs-toggle="tab" data-bs-target="#register-pane" type="button" role="tab">Daftar
+                        Akun</button>
                 </li>
             </ul>
 
             <div class="tab-content">
                 <!-- PANEL LOGIN -->
-                <div class="tab-pane fade <?= $active_tab === 'login' ? 'show active' : '' ?>" id="login-pane" role="tabpanel">
+                <div class="tab-pane fade <?= $active_tab === 'login' ? 'show active' : '' ?>" id="login-pane"
+                    role="tabpanel">
                     <form action="login.php" method="POST">
                         <input type="hidden" name="action" value="login">
-                        
+
                         <div class="mb-3">
                             <label for="login-username" class="form-label">Username</label>
-                            <input type="text" name="username" id="login-username" class="form-control form-control-custom" placeholder="Masukkan username" required>
+                            <input type="text" name="username" id="login-username"
+                                class="form-control form-control-custom" placeholder="Masukkan username" required>
                         </div>
-                        
+
                         <div class="mb-4">
                             <label for="login-password" class="form-label">Password</label>
-                            <input type="password" name="password" id="login-password" class="form-control form-control-custom" placeholder="Masukkan password" required>
+                            <input type="password" name="password" id="login-password"
+                                class="form-control form-control-custom" placeholder="Masukkan password" required>
                         </div>
-                        
+
                         <button type="submit" class="btn btn-custom">
                             <i class="bi bi-box-arrow-in-right me-2"></i>Masuk Ke Gym
                         </button>
@@ -407,36 +427,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
 
                 <!-- PANEL REGISTRASI + BIODATA -->
-                <div class="tab-pane fade <?= $active_tab === 'register' ? 'show active' : '' ?>" id="register-pane" role="tabpanel">
+                <div class="tab-pane fade <?= $active_tab === 'register' ? 'show active' : '' ?>" id="register-pane"
+                    role="tabpanel">
                     <form action="login.php" method="POST">
                         <input type="hidden" name="action" value="register">
-                        
-                        <h6 class="text-warning fw-bold mb-3" style="font-size: 0.8rem; letter-spacing: 0.5px;">1. KREDENSIAL AKUN</h6>
-                        
+
+                        <h6 class="text-warning fw-bold mb-3" style="font-size: 0.8rem; letter-spacing: 0.5px;">1.
+                            KREDENSIAL AKUN</h6>
+
                         <div class="mb-3">
                             <label for="reg-username" class="form-label">Username</label>
-                            <input type="text" name="username" id="reg-username" class="form-control form-control-custom" placeholder="Minimal 3 karakter" required>
+                            <input type="text" name="username" id="reg-username"
+                                class="form-control form-control-custom" placeholder="Minimal 3 karakter" required>
                         </div>
-                        
+
                         <div class="mb-3">
                             <label for="reg-password" class="form-label">Password</label>
-                            <input type="password" name="password" id="reg-password" class="form-control form-control-custom" placeholder="Minimal 6 karakter" required>
+                            <input type="password" name="password" id="reg-password"
+                                class="form-control form-control-custom" placeholder="Minimal 6 karakter" required>
                         </div>
-                        
-                        <h6 class="text-warning fw-bold mt-4 mb-3" style="font-size: 0.8rem; letter-spacing: 0.5px;">2. BIODATA FISIK (BMI & KALORI)</h6>
+
+                        <h6 class="text-warning fw-bold mt-4 mb-3" style="font-size: 0.8rem; letter-spacing: 0.5px;">2.
+                            BIODATA FISIK (BMI & KALORI)</h6>
 
                         <div class="row">
                             <div class="col-6 mb-3">
                                 <label for="reg-height" class="form-label">Tinggi Badan</label>
                                 <div class="input-group">
-                                    <input type="number" step="0.1" name="height" id="reg-height" class="form-control form-control-custom" placeholder="Tinggi" required>
+                                    <input type="number" step="0.1" name="height" id="reg-height"
+                                        class="form-control form-control-custom" placeholder="Tinggi" required>
                                     <span class="input-group-text input-group-text-custom">Cm</span>
                                 </div>
                             </div>
                             <div class="col-6 mb-3">
                                 <label for="reg-weight" class="form-label">Berat Badan</label>
                                 <div class="input-group">
-                                    <input type="number" step="0.1" name="weight" id="reg-weight" class="form-control form-control-custom" placeholder="Berat" required>
+                                    <input type="number" step="0.1" name="weight" id="reg-weight"
+                                        class="form-control form-control-custom" placeholder="Berat" required>
                                     <span class="input-group-text input-group-text-custom">Kg</span>
                                 </div>
                             </div>
@@ -445,7 +472,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div class="row mb-3">
                             <div class="col-6">
                                 <label for="reg-age" class="form-label">Umur</label>
-                                <input type="number" name="age" id="reg-age" class="form-control form-control-custom" placeholder="Tahun" required>
+                                <input type="number" name="age" id="reg-age" class="form-control form-control-custom"
+                                    placeholder="Tahun" required>
                             </div>
                             <div class="col-6">
                                 <label for="reg-gender" class="form-label">Gender</label>
@@ -457,9 +485,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
                         </div>
 
-                        <!-- Cloudflare Turnstile Widget (Mock key for localhost testing) -->
+                        <!-- Cloudflare Turnstile Widget (Dynamic Environment keys) -->
                         <div class="mb-4 d-flex justify-content-center">
-                            <div class="cf-turnstile" data-sitekey="1x00000000000000000000AA" data-theme="dark"></div>
+                            <div class="cf-turnstile" data-sitekey="<?= $turnstile_sitekey ?>" data-theme="dark"></div>
                         </div>
 
                         <button type="submit" class="btn btn-custom">
@@ -476,4 +504,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <!-- Bootstrap 5 Bundle JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
+
 </html>
