@@ -10,8 +10,8 @@ if (in_array($_SERVER['SERVER_NAME'], ['localhost', '127.0.0.1'])) {
     // Konfigurasi Database Production di Shared Hosting Arehost.id
     $host = 'localhost';
     $dbname = 'boangmyi_gymtracker';       // Ganti 'boangmyi' dengan nama user cPanel Anda
-    $username = 'boangmyi_gymuser';       // Ganti 'boangmyi' dengan nama user cPanel Anda
-    $password = 'PasswordKuatAndaDiSini123'; // Ganti dengan password database cPanel Anda
+    $username = 'boangmyi';       // Ganti 'boangmyi' dengan nama user cPanel Anda
+    $password = 'Farhan123!'; // Ganti dengan password database cPanel Anda
 }
 
 try {
