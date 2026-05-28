@@ -6,7 +6,7 @@ require_once 'db.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start([
         'cookie_lifetime' => 86400,
-        'cookie_secure' => false, // Set ke true jika menggunakan HTTPS
+        'cookie_secure' => true, // Set ke true jika menggunakan HTTPS
         'cookie_httponly' => true,
         'cookie_samesite' => 'Lax'
     ]);
@@ -85,25 +85,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = "Silakan lengkapi verifikasi Cloudflare Turnstile.";
         } else {
             // Menggunakan $turnstile_secret dari pendeteksi lingkungan di atas
-
             $verify_url = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
-            $post_data = http_build_query([
+            $post_fields = [
                 'secret' => $turnstile_secret,
                 'response' => $turnstile_response,
                 'remoteip' => $_SERVER['REMOTE_ADDR'] ?? ''
-            ]);
-
-            $opts = [
-                'http' => [
-                    'method' => 'POST',
-                    'header' => "Content-type: application-x-www-form-urlencoded\r\n",
-                    'content' => $post_data,
-                    'timeout' => 5
-                ]
             ];
 
-            $context = stream_context_create($opts);
-            $response_json = @file_get_contents($verify_url, false, $context);
+            // Menggunakan cURL karena shared hosting sering mematikan 'allow_url_fopen' demi keamanan
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $verify_url);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post_fields));
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Cegah kegagalan jabat tangan SSL karena CA-bundle usang di hosting
+            
+            $response_json = curl_exec($ch);
+            curl_close($ch);
+            
             $response = json_decode($response_json, true);
 
             if (!$response || !isset($response['success']) || !$response['success']) {
