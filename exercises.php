@@ -491,6 +491,9 @@ try {
         .custom-modal-content {
             width: 100%;
             max-width: 400px;
+            max-height: 85vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch; /* Smooth iOS inertial scrolling */
             background-color: rgba(26, 28, 36, 0.95);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 16px;

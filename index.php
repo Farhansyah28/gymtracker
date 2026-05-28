@@ -491,6 +491,7 @@ try {
             max-width: 440px;
             max-height: 90vh;
             overflow-y: auto;
+            -webkit-overflow-scrolling: touch; /* Smooth iOS inertial scrolling */
             border: 1px solid rgba(186, 255, 41, 0.15) !important;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(186, 255, 41, 0.05) !important;
             padding: 22px;
